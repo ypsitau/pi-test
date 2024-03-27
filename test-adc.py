@@ -61,9 +61,11 @@ def setup():
         
 def loop():
     while True:
-        value = adc.analogRead(0)    # read the ADC value of channel 0
-        voltage = value / 255.0 * 3.3  # calculate the voltage value
-        print ('ADC Value : %d, Voltage : %.2f'%(value,voltage))
+        voltages = []
+        for i in range(3):
+            voltages.append(adc.analogRead(i) / 255.0 * 3.3)
+        #print ('ADC Value : %d, Voltage : %.2f'%(value,voltage))
+        print('%.2f %.2f %.2f' % (voltages[0], voltages[1], voltages[2]))
         time.sleep(0.1)
 
 def destroy():
