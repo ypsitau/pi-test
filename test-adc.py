@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import time
 import smbus
+import RPi.GPIO as GPIO
 
 class ADCDevice(object):
     def __init__(self):
@@ -20,7 +21,7 @@ class ADCDevice(object):
             
     def close(self):
         self.bus.close()
-        
+
 class PCF8591(ADCDevice):
     def __init__(self):
         super(PCF8591, self).__init__()
@@ -45,10 +46,21 @@ class ADS7830(ADCDevice):
         value = self.bus.read_byte_data(self.address, self.cmd|(((chn<<2 | chn>>1)&0x07)<<4))
         return value
 
-adc = ADCDevice() # Define an ADCDevice class object
+pinLEDRed = 11
+pinLEDGreen = 13
+pinLEDBlue = 15
+
+adc = None
+pwmLEDRed = None
+pwmLEDGreen = None
+pwmLEDBlue = None
 
 def setup():
     global adc
+    global pwmLEDRed
+    global pwmLEDGreen
+    global pwmLEDBlue
+    adc = ADCDevice() # Define an ADCDevice class object
     if(adc.detectI2C(0x48)): # Detect the pcf8591.
         adc = PCF8591()
     elif(adc.detectI2C(0x4b)): # Detect the ads7830
@@ -58,14 +70,30 @@ def setup():
         "Please use command 'i2cdetect -y 1' to check the I2C address! \n"
         "Program Exit. \n");
         exit(-1)
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(pinLEDRed, GPIO.OUT)
+    GPIO.setup(pinLEDGreen, GPIO.OUT)
+    GPIO.setup(pinLEDBlue, GPIO.OUT)
+    GPIO.output(pinLEDRed, GPIO.LOW)
+    GPIO.output(pinLEDGreen, GPIO.LOW)
+    GPIO.output(pinLEDBlue, GPIO.LOW)
+    pwmLEDRed = GPIO.PWM(pinLEDRed, 500)
+    pwmLEDGreen = GPIO.PWM(pinLEDGreen, 500)
+    pwmLEDBlue = GPIO.PWM(pinLEDBlue, 500)
+    pwmLEDRed.start(0)
+    pwmLEDGreen.start(0)
+    pwmLEDBlue.start(0)
         
 def loop():
     while True:
-        voltages = []
+        values = []
         for i in range(3):
-            voltages.append(adc.analogRead(i) / 255.0 * 3.3)
+            values.append(adc.analogRead(i))
         #print ('ADC Value : %d, Voltage : %.2f'%(value,voltage))
-        print('%.2f %.2f %.2f' % (voltages[0], voltages[1], voltages[2]))
+        print('%03d %03d %03d' % (values[0], values[1], values[2]))
+        pwmLEDRed.ChangeDutyCycle(100 - values[0] * 100 / 255)
+        pwmLEDGreen.ChangeDutyCycle(100 - values[1] * 100 / 255)
+        pwmLEDBlue.ChangeDutyCycle(100 - values[2] * 100 / 255)
         time.sleep(0.1)
 
 def destroy():
